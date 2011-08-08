@@ -49,8 +49,8 @@ def updateData(country, slugs):
             if modified >= status['lastModified']:
                 # No update
                 print '\t No update'
-                f.close()
-                continue
+                #f.close()
+                #continue
 
             f.write(str(status['lastModified']))
             f.close()
@@ -71,14 +71,19 @@ def updateData(country, slugs):
             print 'Error loading %s-%s' % (country, slug)
             continue
 
-        t = int(time())
+#        t = int(time())
         def process(aucs, side):
+            """
             base = os.path.join(REALMS_DIR % (country, slug), str(t))
             if not os.path.isdir(base):
                 os.mkdir(base)
             f = open(os.path.join(base, side), 'w')
             f.write(simplejson.dumps(aucs, separators=(',',':')))
             f.close()
+            """
+
+            db.insertAuctions((country, slug, side), aucs['auctions'])
+
             print '\t%s: %d' % (side, len(aucs['auctions']))
 
         process(j['alliance'], 'a')
@@ -97,7 +102,7 @@ def updateTest():
     
 def main():
     print str(datetime.datetime.now())
-    updateTest()
+    #updateTest()
 
 if __name__ == '__main__':
     main()

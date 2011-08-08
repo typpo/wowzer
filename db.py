@@ -20,7 +20,7 @@ DB_CREATE = """
 CREATE DATABASE IF NOT EXISTS wowzer
 """
 
-# Table names are format countrycode-slug, eg. us-elune
+# Table names are format countrycode_slug, eg. us-elune
 DB_TABLE_META = """
 CREATE TABLE IF NOT EXISTS %s_%s_meta(
     updated DATETIME
@@ -29,17 +29,17 @@ CREATE TABLE IF NOT EXISTS %s_%s_meta(
 
 DB_TABLE_AUCTIONS = """
 
-CREATE TABLE IF NOT EXISTS %s_%s_auctions(
+CREATE TABLE IF NOT EXISTS %s_%s_%s_auctions(
     id INT NOT NULL AUTO_INCREMENT,
     PRIMARY KEY(id),
 
     auction INT,
     item INT,
-    bid INT,
-    buyout INT,
-    quantity INT,
-    owner VARCHAR(30),
-    timeLeft INT,
+    bid BIGINT,
+    buyout BIGINT,
+    quantity SMALLINT,
+    owner VARCHAR(20),
+    timeLeft SMALLINT,
     time DATETIME,
 
     INDEX(item),
@@ -61,22 +61,30 @@ TIMELEFT_MAPPING = {
 
 def createTables(newtables):
     for country, realm in newtables:
-        cur.execute(DB_TABLE_AUCTIONS % (country, realm));
         cur.execute(DB_TABLE_META % (country, realm));
+        cur.execute(DB_TABLE_AUCTIONS % (country, realm, 'a'));
+        cur.execute(DB_TABLE_AUCTIONS % (country, realm, 'h'));
+        cur.execute(DB_TABLE_AUCTIONS % (country, realm, 'n'));
 
     conn.commit();
+    print 'Tables created'
 
 
-def insertAuctions(aucs, info):
-    country, realm = info
+def insertAuctions(info, aucs):
+    country, realm, side = info
     for auc in aucs:
+        print auc
+        table = '%s_%s_%s_auctions' % (country, realm, side) 
         cur.execute("""
-            INSERT INTO %s_%s (auction, item, bid, buyout, quantity, owner, timeLeft, time)
+            INSERT INTO """+table+"""
+            (auction, item, bid, buyout, quantity, owner, timeLeft, time)
             VALUES
-                (?, ?, ?, ?, ?, ?, ?, NOW())
-        """, [auc['auction'], auc['item'], auc['bid'], auc['buyout'], 
+            (%s, %s, %s, %s, %s, %s, %s, NOW())""",
+                [auc['auc'], auc['item'], auc['bid'], auc['buyout'], 
                 auc['quantity'], auc['owner'], 
                 TIMELEFT_MAPPING[auc['timeLeft']]])
+
+        return
 
     conn.commit();
 
