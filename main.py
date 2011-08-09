@@ -10,10 +10,13 @@ from StringIO import StringIO
 from time import time
 
 import db
+import util
 
 REALMS_DIR = '/home/ian/projects/wowzer/realms/%s/%s'
 REALMS_BASE = 'http://%s.battle.net/api/wow/realm/status'
 AUCTIONS_CHECK = 'http://%s.battle.net/api/wow/auction/data/%s'
+
+TEST = ('us', 'elune', 'a')
 
 def updateRealms(country):
     # Get realms list and create corresponding directories if applicable
@@ -42,16 +45,19 @@ def updateData(country, slugs):
             info = os.path.join(REALMS_DIR % (country, slug), 'info')
 
             # Someday this will be a config file, maybe
-            f = open(info, 'r+')
-            lines = f.readlines()
-            modified = int(lines[0]) if len(lines) > 0 else 0
+            modified = 0
+            if os.path.exists(info):
+                f = open(info, 'r')
+                lines = f.readlines()
+                if len(lines) > 0:
+                    modified = int(lines[0])
+                f.close()
 
             if modified >= status['lastModified']:
-                # No update
                 print '\t No update'
-                #f.close()
-                #continue
+                continue
 
+            f = open(info, 'w')
             f.write(str(status['lastModified']))
             f.close()
 
@@ -67,7 +73,7 @@ def updateData(country, slugs):
                 print '%s-%s not gzipped' % (country, slug)
                 data = response
             j = simplejson.loads(data)
-        except IOError:
+        except:
             print 'Error loading %s-%s' % (country, slug)
             continue
 
@@ -83,7 +89,6 @@ def updateData(country, slugs):
             """
 
             db.insertAuctions((country, slug, side), aucs['auctions'])
-
             print '\t%s: %d' % (side, len(aucs['auctions']))
 
         process(j['alliance'], 'a')
@@ -102,7 +107,11 @@ def updateTest():
     
 def main():
     print str(datetime.datetime.now())
-    #updateTest()
+
+    if len(sys.argv) == 2 and sys.argv[1] == 'dev':
+        print 'dev mode'
+    else:
+        updateTest()
 
 if __name__ == '__main__':
     main()
