@@ -11,6 +11,8 @@ from time import time
 
 import db
 import util
+import arbitrage as arb
+from money import Money
 
 REALMS_DIR = '/home/ian/projects/wowzer/realms/%s/%s'
 REALMS_BASE = 'http://%s.battle.net/api/wow/realm/status'

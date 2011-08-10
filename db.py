@@ -2,9 +2,10 @@ import MySQLdb
 import time
 import datetime
 from db_settings import DB_USER, DB_PASS
+from money import Money
 
 FIVE_HOURS = 18000000
-ONEONE__DAY = 86400000
+ONE_DAY = 86400000
 
 ### Config
 
@@ -53,6 +54,19 @@ CREATE TABLE IF NOT EXISTS %s_%s_%s_auctions(
 
 """
 
+DB_TABLE_REAGENTS = """
+CREATE TABLE IF NOT EXISTS reagents (
+    id INT NOT NULL AUTO_INCREMENT,
+    PRIMARY KEY(id),
+
+    item INT,
+    reagent INT,
+
+    INDEX(item),
+    INDEX(reagent)
+)
+"""
+
 
 ### Write functions
 
@@ -64,7 +78,13 @@ TIMELEFT_MAPPING = {
 }
 
 
-def createTables(newtables):
+def createReagentsTable():
+    cur.execute(DB_TABLE_REAGENTS)
+    conn.commit()
+    print 'Table created'
+    
+
+def createRealmTables(newtables):
     for country, realm in newtables:
         cur.execute(DB_TABLE_META % (country, realm));
         cur.execute(DB_TABLE_AUCTIONS % (country, realm, 'a'));
@@ -93,7 +113,6 @@ def insertAuctions(info, aucs):
     conn.commit();
 
 ### Query functions
-# http://www.tutorialspoint.com/python/python_database_access.htm
 
 class Row:
     def __init__(self, r):
@@ -108,12 +127,12 @@ class Row:
 
 # General response
 # Returns timestamp and dict containing keys bid, buy, each a tuple of low, high, avg
-def spread(queryresults)
+def spread(queryresults):
     results = [Row(x) for x in queryresults]
 
     # Find current min
     if len(results) < 1:
-        return None
+        return -1, {}
 
     ts_current = results[0].time
     high_bid = low_bid = results[0].bid
@@ -240,10 +259,43 @@ def series(queryresults):
 # Returns of status, avgTimeSeriesBid, avgTimeSeriesBuy
 # Time series are lists
 # Days = days prior to now
-def getSeries(realm, item, days):
-    pass
+def getSeries(rinfo, item, days):
+    country, realm, side = rinfo
+    table = '%s_%s_%s_auctions' % (country, realm, side)
+
+    query = """
+    SELECT auction,item,bid,buyout,quantity,owner,timeLeft,time
+    FROM """+table+"""
+    WHERE item=%s AND time >= FROM_UNIXTIME(%s)
+    ORDER BY time DESC
+    """
+    queryargs = (item, int(time.time()-(ONE_DAY*days)))
+    cur.execute(query, queryargs)
+
+    return series(cur.fetchall())
 
 # Returns of status, avgBid, avgBO
 def getEMA(realm, item, days):
     pass
 
+# Returns reagents for item
+def getReagents(item):
+    query = """
+    SELECT reagent
+    FROM reagents
+    WHERE item=%s
+    """
+    queryargs = (item)
+    cur.execute(query, queryargs)
+
+    return [x[0] for x in cur.fetchall()]
+
+def saveReagents(item, ids):
+    for id in ids:
+        query = """
+        INSERT INTO reagents (item, reagent)
+        VALUES (%s, %s)
+        """
+        queryargs = (item, id)
+        cur.execute(query, queryargs)
+    conn.commit()
