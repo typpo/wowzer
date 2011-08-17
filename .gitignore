@@ -2,4 +2,6 @@
 *.swp
 *~
 realms/
+node/
+web/
 db_settings.py

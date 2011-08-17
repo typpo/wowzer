@@ -116,14 +116,20 @@ def insertAuctions(info, aucs):
 
 class Row:
     def __init__(self, r):
-        self.auc = r[0]
-        self.item = r[1]
-        self.bid = r[2]
-        self.buy = r[3]
-        self.quant = r[4]
+        self.auc = int(r[0])
+        self.item = int(r[1])
+        self.bid = int(r[2])
+        self.bidper = int(r[2])/int(r[4])
+        self.buy = int(r[3])
+        self.buyper = int(r[3])/int(r[4])
+        self.quant = int(r[4])
         self.owner = r[5]
-        self.timeLeft = r[6]
+        self.timeLeft = int(r[6])
         self.time = r[7]
+
+    def __str__(self):
+        return 'auc #%d for item #%d x%d: (%s bid per) (%s buy per)' \
+            % (self.auc, self.item, self.quant, Money(self.bidper), Money(self.buyper))
 
 # General response
 # Returns timestamp and dict containing keys bid, buy, each a tuple of low, high, avg
@@ -163,6 +169,36 @@ def spread(queryresults):
         'bid': (low_bid, high_bid, avg_bid),
         'buy': (low_buy, high_buy, avg_buy),
     }
+
+
+# Get items above a certain buy price
+def getCurrentItems(rinfo, price_min, price_max):
+    country, realm, side = rinfo
+    table = '%s_%s_%s_auctions' % (country, realm, side)
+
+    query = """
+    SELECT time
+    FROM """+table+"""
+    ORDER BY time DESC LIMIT 1
+    """
+    cur.execute(query)
+    
+    x = cur.fetchall()
+    if len(x) > 0:
+        query = """
+        SELECT auction,item,bid,buyout,quantity,owner,timeLeft,time
+        FROM """+table+"""
+        WHERE time = %s
+        ORDER BY time DESC
+        """
+        queryargs = (x[0])
+        cur.execute(query, queryargs)
+
+        results = [Row(x) for x in cur.fetchall()]
+        return [x for x in results 
+            if x.buy >= price_min and x.buy <= price_max]        
+    else:
+        return None
 
 
 # Hidden limit of five hours

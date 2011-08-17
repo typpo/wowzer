@@ -2,8 +2,8 @@
 
 class Money:
 
-    def __init__(self, copper):
-        self.set(copper)
+    def __init__(self, copper=0, silver=0, gold=0):
+        self.set(copper+100*silver+10000*gold)
 
     def set(self, copper):
         self.gold = int(copper / 10000)
@@ -20,3 +20,8 @@ class Money:
 
     def __str__(self):
         return '%sg %ss %sc' % (self.tuple())
+
+    def __cmp__(self, other):
+        if type(other) == int:
+            return self._copper.__cmp__(other)
+        return self._copper.__cmp__(other._copper)
