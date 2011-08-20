@@ -11,20 +11,33 @@ WOWHEAD_BASE = 'http://www.wowhead.com/item=%d&xml'
 
 # Returns tuple: low BO for item, list of low BO for mats
 def getCraftPricing(rinfo, item):
+    wowheadxml = None
+
     # Look up mats for item number - check db first
-
-    rs = db.getReagents(item)
-    if len(rs) < 1:
-
+    reagents = db.getReagents(item)
+    if len(reagents) < 1:
         # Not there, so check wowhead
-        xml = parse(urllib.urlopen(WOWHEAD_BASE % (item)))
-        ingreds = xml.findall('item/createdBy/spell/reagent')
-        rs = [x.get('id') for x in ingreds]
+        wowheadxml = parse(urllib.urlopen(WOWHEAD_BASE % (item)))
+        ingreds = wowheadxml.findall('item/createdBy/spell/reagent')
+        reagents = [x.get('id') for x in ingreds]
+        item_map = [(x.get('id'), x.get('name')) for x in ingreds]
 
-        # Store in database
-        db.saveReagents(item, rs)
+        # Store in databases
+        db.saveReagents(item, reagents)
+        db.saveItems(item_map)
+
+    # Grab item name
+    item_name = db.getItemName(item)
+    if not item_name:
+        # Look it up
+        if not wowheadxml:
+            wowheadxml = parse(urllib.urlopen(WOWHEAD_BASE % (item)))
+        item_name = wowheadxml.find('item/name').text
+        db.saveItems([(item, item_name)])
+
 
     # Compare prices, etc.
+    # TODO combine all these getCurrentSpreads into single query
     ts, prices = db.getCurrentSpread(rinfo, item)
     if ts == -1 or 'buy' not in prices:
         return False
@@ -32,7 +45,7 @@ def getCraftPricing(rinfo, item):
     crafted = prices['buy'][0]
 
     rprices = []
-    for id in rs:
+    for id in reagents:
         ts, prices = db.getCurrentSpread(rinfo, id)
         if ts == None or 'buy' not in prices:
             return False
@@ -43,10 +56,17 @@ def getCraftPricing(rinfo, item):
 def findCraftable(rinfo, min_price=Money(gold=50), max_price=Money(gold=175)):
     items = db.getCurrentItems(rinfo, min_price, max_price)
 
+    lookedup  = {}
     for item in items:
+        if item in lookedup:
+            continue
+        lookedup[item] = True
+
         print str(item), ':'
-        makemoney, cid, craftprices = getCraftPricing(rinfo, item.item)
-        if len(craftprices) > 0:
-            craftprices = [str(Money(x)) for x in craftprices]
-            print '\t(profit %s) (sell %s) (mats %s)' \
-                % (str(Money(makemoney)), str(Money(cid)), craftprices)
+        pricingreturn = getCraftPricing(rinfo, item.item)
+        if pricingreturn:
+            makemoney, cid, craftprices = pricingreturn
+            if len(craftprices) > 0 and makemoney > 0:
+                craftprices = [str(Money(x)) for x in craftprices]
+                print '\t(profit %s) (sell %s) (mats %s)' \
+                    % (str(Money(makemoney)), str(Money(cid)), craftprices)

@@ -56,15 +56,22 @@ CREATE TABLE IF NOT EXISTS %s_%s_%s_auctions(
 
 DB_TABLE_REAGENTS = """
 CREATE TABLE IF NOT EXISTS reagents (
-    id INT NOT NULL AUTO_INCREMENT,
-    PRIMARY KEY(id),
-
     item INT,
     reagent INT,
 
     INDEX(item),
     INDEX(reagent)
 )
+"""
+
+DB_TABLE_ITEMS = """
+CREATE TABLE IF NOT EXISTS items (
+    item INT UNIQUE,
+    name VARCHAR(60),
+
+    INDEX(item)
+)
+
 """
 
 
@@ -83,6 +90,12 @@ def createReagentsTable():
     conn.commit()
     print 'Table created'
     
+
+def createItemsTable():
+    cur.execute(DB_TABLE_ITEMS)
+    conn.commit()
+    print 'Table created'
+
 
 def createRealmTables(newtables):
     for country, realm in newtables:
@@ -111,6 +124,29 @@ def insertAuctions(info, aucs):
                 now])
 
     conn.commit();
+
+
+def saveReagents(item, ids):
+    for id in ids:
+        query = """
+        INSERT INTO reagents (item, reagent)
+        VALUES (%s, %s)
+        """
+        queryargs = (item, id)
+        cur.execute(query, queryargs)
+    conn.commit()
+
+def saveItems(ids_names):
+    for item in ids_names:
+        id, name = item
+
+        query = """
+        INSERT IGNORE INTO items (item, name)
+        VALUES (%s, %s)
+        """
+        queryargs = (id, name)
+        cur.execute(query, queryargs)
+    conn.commit()
 
 ### Query functions
 
@@ -205,6 +241,24 @@ def getCurrentItems(rinfo, price_min, price_max):
 def getCurrentSpread(rinfo, item):
     country, realm, side = rinfo
     table = '%s_%s_%s_auctions' % (country, realm, side)
+
+    query = """
+    SELECT auction,item,bid,buyout,quantity,owner,timeLeft,time
+    FROM """+table+"""
+    WHERE item=%s AND time >= FROM_UNIXTIME(%s)
+    ORDER BY time DESC
+    """
+    queryargs = (item, int(time.time()-FIVE_HOURS))
+    cur.execute(query, queryargs)
+
+    return spread(cur.fetchall())
+
+
+def getMultiCurrentSpread(rinfo, items):
+    country, realm, side = rinfo
+    table = '%s_%s_%s_auctions' % (country, realm, side)
+
+    itemmatch = 'OR'.join('item=%s' * len(items))
 
     query = """
     SELECT auction,item,bid,buyout,quantity,owner,timeLeft,time
@@ -326,12 +380,18 @@ def getReagents(item):
 
     return [x[0] for x in cur.fetchall()]
 
-def saveReagents(item, ids):
-    for id in ids:
-        query = """
-        INSERT INTO reagents (item, reagent)
-        VALUES (%s, %s)
-        """
-        queryargs = (item, id)
-        cur.execute(query, queryargs)
-    conn.commit()
+# Returns item name
+def getItemName(item):
+    query = """
+    SELECT name
+    FROM items
+    WHERE item=%s
+    """
+    queryargs = (item)
+    cur.execute(query, queryargs)
+
+    results = cur.fetchall()
+    if len(results) < 1:
+        return None
+    else:
+        return results[0][0]
