@@ -61,9 +61,9 @@ def findCraftable(rinfo, min_price=Money(gold=50), max_price=Money(gold=175)):
 
     lookedup  = {}
     for item in items:
-        if item in lookedup:
+        if item.item in lookedup:
             continue
-        lookedup[item] = True
+        lookedup[item.item] = True
 
         pricingreturn = getCraftPricing(rinfo, item.item)
         if pricingreturn:
