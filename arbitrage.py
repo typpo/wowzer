@@ -9,7 +9,7 @@ from money import Money
 
 WOWHEAD_BASE = 'http://www.wowhead.com/item=%d&xml'
 
-# Returns tuple: low BO for item, list of low BO for mats
+# Returns tuple of profit and pricing information
 def getCraftPricing(rinfo, item):
     wowheadxml = None
 
@@ -48,28 +48,37 @@ def getCraftPricing(rinfo, item):
     crafted = prices['buy'][0]
 
     rprices = []
+    rnames = []
     for id in reagents:
+        rnames.append(db.getItemName(id))
         ts, prices = spreads[id]
         if ts == None or 'buy' not in prices:
             return False
         rprices.append(prices['buy'][0])
 
-    return crafted - sum(rprices), crafted, rprices
+    return {
+        'item': item_name,
+        'reagents': rnames,
+
+        'profit': crafted - sum(rprices),
+        'sell': crafted,
+        'buy': rprices,
+    }
 
 def findCraftable(rinfo, min_price=Money(gold=50), max_price=Money(gold=175)):
     items = db.getCurrentItems(rinfo, min_price, max_price)
 
     lookedup  = {}
+    ret = []
     for item in items:
         if item.item in lookedup:
             continue
         lookedup[item.item] = True
 
-        pricingreturn = getCraftPricing(rinfo, item.item)
-        if pricingreturn:
-            makemoney, cid, craftprices = pricingreturn
+        pricing = getCraftPricing(rinfo, item.item)
+        if pricing:
             # Print profitable items
-            if len(craftprices) > 0 and makemoney > 0:
-                craftprices = [str(Money(x)) for x in craftprices]
-                print '(profit %s) (sell %s) (mats %s)' \
-                    % (str(Money(makemoney)), str(Money(cid)), craftprices)
+            if len(pricing['buy']) > 0 and pricing['profit'] > 0:
+                ret.append(pricing)
+
+    return ret

@@ -6,6 +6,7 @@ import simplejson
 import urllib, urllib2
 import datetime
 import gzip
+import json
 from StringIO import StringIO
 from time import time
 
@@ -79,24 +80,20 @@ def updateData(country, slugs):
             print 'Error loading %s-%s' % (country, slug)
             continue
 
-#        t = int(time())
         def process(aucs, side):
-            """
-            base = os.path.join(REALMS_DIR % (country, slug), str(t))
-            if not os.path.isdir(base):
-                os.mkdir(base)
-            f = open(os.path.join(base, side), 'w')
-            f.write(simplejson.dumps(aucs, separators=(',',':')))
-            f.close()
-            """
-
             db.insertAuctions((country, slug, side), aucs['auctions'])
             print '\t%s: %d' % (side, len(aucs['auctions']))
+
+            arbitrage_file = os.path.join(REALMS_DIR % (country, slug), 'arb_'+side)
+            f = open(arbitrage_file, 'w')
+            f.write(json.dumps(arb.findCraftable((country,slug,side))))
+            f.close()
 
         process(j['alliance'], 'a')
         process(j['horde'], 'h')
         process(j['neutral'], 'n')
         c+=1
+
     
 def updateAll():
     eu_realms = updateRealms('eu') 
@@ -104,8 +101,10 @@ def updateAll():
     us_realms = updateRealms('us') 
     updateData('us', us_realms)
 
+
 def updateTest():
     updateData('us', ['elune'])
+    
     
 def main():
     print str(datetime.datetime.now())
