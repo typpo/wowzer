@@ -37,8 +37,11 @@ def getCraftPricing(rinfo, item):
 
 
     # Compare prices, etc.
-    # TODO combine all these getCurrentSpreads into single query
-    ts, prices = db.getCurrentSpread(rinfo, item)
+    
+    # Query spreads for item and its reagents
+    spreads = db.getMultiCurrentSpread(rinfo, [item] + reagents)
+
+    ts, prices = spreads[item]
     if ts == -1 or 'buy' not in prices:
         return False
 
@@ -46,7 +49,7 @@ def getCraftPricing(rinfo, item):
 
     rprices = []
     for id in reagents:
-        ts, prices = db.getCurrentSpread(rinfo, id)
+        ts, prices = spreads[id]
         if ts == None or 'buy' not in prices:
             return False
         rprices.append(prices['buy'][0])
@@ -62,11 +65,11 @@ def findCraftable(rinfo, min_price=Money(gold=50), max_price=Money(gold=175)):
             continue
         lookedup[item] = True
 
-        print str(item), ':'
         pricingreturn = getCraftPricing(rinfo, item.item)
         if pricingreturn:
             makemoney, cid, craftprices = pricingreturn
+            # Print profitable items
             if len(craftprices) > 0 and makemoney > 0:
                 craftprices = [str(Money(x)) for x in craftprices]
-                print '\t(profit %s) (sell %s) (mats %s)' \
+                print '(profit %s) (sell %s) (mats %s)' \
                     % (str(Money(makemoney)), str(Money(cid)), craftprices)

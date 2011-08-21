@@ -167,12 +167,9 @@ class Row:
         return 'auc #%d for item #%d x%d: (%s bid per) (%s buy per)' \
             % (self.auc, self.item, self.quant, Money(self.bidper), Money(self.buyper))
 
-# General response
+# General response - takes a list of Row type
 # Returns timestamp and dict containing keys bid, buy, each a tuple of low, high, avg
-def spread(queryresults):
-    results = [Row(x) for x in queryresults]
-
-    # Find current min
+def spread(results):
     if len(results) < 1:
         return -1, {}
 
@@ -251,25 +248,47 @@ def getCurrentSpread(rinfo, item):
     queryargs = (item, int(time.time()-FIVE_HOURS))
     cur.execute(query, queryargs)
 
-    return spread(cur.fetchall())
+    return spread([Row(x) for x in cur.fetchall()])
 
 
+# Get current spread of multiple items
+# Returns a dict of spread info keyed by items
 def getMultiCurrentSpread(rinfo, items):
     country, realm, side = rinfo
     table = '%s_%s_%s_auctions' % (country, realm, side)
 
-    itemmatch = 'OR'.join('item=%s' * len(items))
+    # Get all items auctions after a certain time
+    item_query = ' OR '.join(['item=%s']*len(items))
 
     query = """
     SELECT auction,item,bid,buyout,quantity,owner,timeLeft,time
     FROM """+table+"""
-    WHERE item=%s AND time >= FROM_UNIXTIME(%s)
+    WHERE ("""+item_query+""") AND time >= FROM_UNIXTIME(%s)
     ORDER BY time DESC
     """
-    queryargs = (item, int(time.time()-FIVE_HOURS))
+    queryargs = items + [int(time.time()-FIVE_HOURS)]
     cur.execute(query, queryargs)
 
-    return spread(cur.fetchall())
+    # Dict keyed by item
+    ret = {}
+    results = [Row(x) for x in cur.fetchall()]
+    for result in results:
+        if result.item not in items:
+            continue
+
+        if result.item not in ret:
+            ret[result.item] = [result]
+        else:
+            ret[result.item].append(result)
+        
+    # Some items eg. 58145 have duplicate reagents 
+    for key in set(items):
+        if key not in ret:
+            ret[key] = spread([])
+        else:
+            ret[key] = spread(ret[key])
+
+    return ret
 
 # Returns of status, avgBid, avgBO
 # Days = days prior to now
