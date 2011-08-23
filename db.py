@@ -158,14 +158,14 @@ class Row:
         self.bidper = int(r[2])/int(r[4])
         self.buy = int(r[3])
         self.buyper = int(r[3])/int(r[4])
-        self.quant = int(r[4])
+        self.qty = int(r[4])
         self.owner = r[5]
         self.timeLeft = int(r[6])
         self.time = r[7]
 
     def __str__(self):
         return 'auc #%d for item #%d x%d: (%s bid per) (%s buy per)' \
-            % (self.auc, self.item, self.quant, Money(self.bidper), Money(self.buyper))
+            % (self.auc, self.item, self.qty, Money(self.bidper), Money(self.buyper))
 
 # General response - takes a list of Row type
 # Returns timestamp and dict containing keys bid, buy, each a tuple of low, high, avg
@@ -221,15 +221,14 @@ def getCurrentItems(rinfo, price_min, price_max):
         query = """
         SELECT auction,item,bid,buyout,quantity,owner,timeLeft,time
         FROM """+table+"""
-        WHERE time = %s
+        WHERE time = %s AND buyout >= %s AND buyout <= %s
         ORDER BY time DESC
         """
-        queryargs = (x[0])
+        queryargs = (x[0][0], price_min, price_max)
         cur.execute(query, queryargs)
 
         results = [Row(x) for x in cur.fetchall()]
-        return [x for x in results 
-            if x.buy >= price_min and x.buy <= price_max]        
+        return results
     else:
         return None
 
@@ -307,22 +306,24 @@ def getDaysAvg(rinfo, item, days):
 
     return spread(cur.fetchall())
 
-# Returns x_axis (list of time); bid, buy (dicts of tuple (high, low, avg))
+# Returns x_axis (list of time); bid, buy (dicts of tuple (high, low, avg)); quantity
 def series(queryresults):
     results = [Row(x) for x in queryresults]
 
     # Find current min
     if len(results) < 1:
-        return None
+        return {'time':[], 'bid':{}, 'buy':{}, quantity:[]}
 
     time = []
     bid = {'high':[],'low':[],'avg':[]}
     buy = {'high':[],'low':[],'avg':[]}
+    quantity = []
 
     ts_current = results[0].time
     high_bid = low_bid = results[0].bid
     high_buy = low_buy = results[0].buy
     total_bid = total_buy = 0
+    qty_current = 0
     c = 0
 
     for result in results:
@@ -331,8 +332,8 @@ def series(queryresults):
             time.append(ts_current)
             bid['high'].append(high_bid)
             buy['high'].append(high_buy)
-            bid['low'].append(high_bid)
-            buy['low'].append(high_buy)
+            bid['low'].append(low_bid)
+            buy['low'].append(low_buy)
 
             avg_bid = float(total_bid) / c
             avg_buy = float(total_buy) / c
@@ -340,12 +341,16 @@ def series(queryresults):
             bid['avg'].append(avg_bid)
             buy['avg'].append(avg_buy)
 
+            quantity.append(qty_current)
+
             # reset
+            # TODO merge with above
             ts_current = result.time
             high_bid = low_bid = result.bid
             high_buy = low_buy = result.buy
             total_bid = result.bid
             total_buy = result.buy
+            qty_current = 0
             c = 1
             continue
 
@@ -361,11 +366,18 @@ def series(queryresults):
 
         total_bid += result.bid
         total_buy += result.buy
+
+        qty_current += result.qty
         c += 1
     
-    return time, bid, buy
+    return {
+        'time':time,
+        'bid':bid,
+        'buy':buy,
+        'quantity':quantity,
+    }
 
-# Returns of status, avgTimeSeriesBid, avgTimeSeriesBuy
+# Returns of status, avgTimeSeriesBid, avgTimeSeriesBuy, timeSeriesQty
 # Time series are lists
 # Days = days prior to now
 def getSeries(rinfo, item, days):

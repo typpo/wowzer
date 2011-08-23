@@ -4,6 +4,8 @@
 <title>wowzer - Best item prices</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript" src="scripts/jquery.appear-1.1.1.min.js"></script>
 <script type="text/javascript">
 
 function gup(name)
@@ -16,6 +18,33 @@ function gup(name)
     return "";
   else
     return results[1];
+}
+
+function unix_to_readable(t) {
+    var date = new Date(t*1000);
+    var diff = (((new Date()).getTime() - date.getTime()) / 1000);
+    var day_diff = Math.floor(diff / 86400);
+            
+    return day_diff == 0 && (
+            diff < 60 && "just now" ||
+            diff < 120 && "1 minute ago" ||
+            diff < 3600 && Math.floor( diff / 60 ) + " minutes ago" ||
+            diff < 7200 && "1 hour ago" ||
+            diff < 86400 && Math.floor( diff / 3600 ) + " hours ago") ||
+        day_diff == 1 && "Yesterday" ||
+        day_diff < 7 && day_diff + " days ago" ||
+        day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks ago";
+}
+
+function inview(elem)
+{
+    var docViewTop = $(window).scrollTop();
+    var docViewBottom = docViewTop + $(window).height();
+
+    var elemTop = $(elem).offset().top;
+    var elemBottom = elemTop + $(elem).height();
+
+    return ((elemBottom >= docViewTop) && (elemTop <= docViewBottom));
 }
 
 function wowprice(o) {
@@ -38,7 +67,11 @@ function wowprice(o) {
     }
 }
 
-$(function(){
+var drawn;
+
+google.load("visualization", "1", {packages:["corechart"]});
+google.setOnLoadCallback(function() {
+
     var realm = gup("name");
     var country = gup("country");
     if (realm == "" || country == "") {
@@ -49,6 +82,8 @@ $(function(){
         $.ajax({
             url: 'realms/'+country+'/'+realm+'/arb_a',
             success: function(data){
+                drawn = [];
+
                 data = data.sort(function(a, b) {
                     return (b['profit'] - a['profit']);
                 });
@@ -61,15 +96,57 @@ $(function(){
                     s += '</tr>';
                     return s;
                 }
-                
-                $.each(data, function(){
+
+                $.each(data, function(idx){
+                    // Add row to table
+                    var voldiv = '<div id="qty'+idx+'"></div>';
+                    var buydiv = '<div id="buy'+idx+'"></div>';
                     $('#table tr:last').before(
                         wraprow([this['item'],
                                 wowprice(this['profit']),
                                 wowprice(this['buy']).join(','),
                                 wowprice(this['sell']),
-                                this['reagents'].join(',')])
-                );
+                                this['reagents'].join(','),
+                                buydiv,
+                                voldiv])
+                    );
+
+                    // Load graph only when visible
+                    $('#qty'+idx).appear(function() {
+                        if (drawn[idx] != undefined)
+                            return;
+
+                        drawn[idx] = true;
+                        var me = data[idx];
+
+                        // Build charts
+
+                        // Quantity/volume graph
+                        var volgraph = new google.visualization.DataTable();
+                        volgraph.addColumn('string', 'Time');
+                        volgraph.addColumn('number', 'Quantity');
+                        // Price/buyout graph
+                        var buygraph = new google.visualization.DataTable();
+                        buygraph.addColumn('string', 'Time');
+                        buygraph.addColumn('number', 'Price (g)');
+
+
+                        var len = me.series.time.length;
+                        volgraph.addRows(len);
+                        buygraph.addRows(len);
+                        for(var i=0; i < len; i++) {
+                            var timestr = unix_to_readable(me.series.time[len-1-i]);
+                            volgraph.setValue(i, 0, timestr);
+                            buygraph.setValue(i, 0, timestr);
+                            volgraph.setValue(i, 1, me.series.quantity[len-1-i]);
+                            buygraph.setValue(i, 1, Math.floor(me.series.buy.low[len-1-i] / 10000));
+                        }
+
+                        var volchart = new google.visualization.LineChart(document.getElementById('qty'+idx));
+                        volchart.draw(volgraph, {width: 400, height: 240, title: 'Volume over time'});
+                        var buychart = new google.visualization.LineChart(document.getElementById('buy'+idx));
+                        buychart.draw(buygraph, {width: 400, height: 240, title: 'BO price over time'});
+                    });
                 });
 
                 $('#loading').hide();
@@ -98,6 +175,8 @@ $(function(){
                             <th>Buy</th>
                             <th>Sell</th>
                             <th>Mats</th>
+                            <th>Qty</th>
+                            <th>Price</th>
                     <tr>
             <thead>
 

@@ -14,6 +14,9 @@ class Money:
     def tuple(self):
         return self.gold, self.silver, self.copper
 
+    def val(self):
+        return self._copper
+
     def gold(self):
         # Converts to gold
         return self._copper / 10000

@@ -84,9 +84,10 @@ def updateData(country, slugs):
             db.insertAuctions((country, slug, side), aucs['auctions'])
             print '\t%s: %d' % (side, len(aucs['auctions']))
 
+            writeme = json.dumps(arb.findCraftable((country,slug,side)))
             arbitrage_file = os.path.join(REALMS_DIR % (country, slug), 'arb_'+side)
             f = open(arbitrage_file, 'w')
-            f.write(json.dumps(arb.findCraftable((country,slug,side))))
+            f.write(writeme)
             f.close()
 
         process(j['alliance'], 'a')

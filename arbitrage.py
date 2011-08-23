@@ -2,6 +2,7 @@
 # TODO arbitrage for entire supply chain (eg. mute gem, then cut gem)
 
 import urllib
+import time
 from xml.etree.ElementTree import parse
 
 import db
@@ -65,8 +66,9 @@ def getCraftPricing(rinfo, item):
         'buy': rprices,
     }
 
-def findCraftable(rinfo, min_price=Money(gold=50), max_price=Money(gold=175)):
-    items = db.getCurrentItems(rinfo, min_price, max_price)
+def findCraftable(rinfo, min_price=Money(gold=50), max_price=Money(gold=150)):
+    print 'Doing arbitrage calcs...'
+    items = db.getCurrentItems(rinfo, min_price.val(), max_price.val())
 
     lookedup  = {}
     ret = []
@@ -79,6 +81,13 @@ def findCraftable(rinfo, min_price=Money(gold=50), max_price=Money(gold=175)):
         if pricing:
             # Print profitable items
             if len(pricing['buy']) > 0 and pricing['profit'] > 0:
+                print 'Producing timeseries for', item.item
+                # Convert datetimes to unix timestamps
+                series = db.getSeries(rinfo, item.item, 2)
+                series['time'] = [time.mktime(x.timetuple()) for x in series['time']]
+                # Not interested in these things yet
+                del series['bid']
+                #del series['buy']
+                pricing['series'] = series
                 ret.append(pricing)
-
     return ret
