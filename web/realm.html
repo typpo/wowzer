@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<title>wow arbiter</title>
+<title>wowzer - Best item prices</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
 <script type="text/javascript">
@@ -24,7 +24,7 @@ function wowprice(o) {
         var s = Math.floor((c%10000) / 100);
         c = c - s*100 - g*10000;
         var ret = '';
-        return g+'g '+s+'s '+c+'c ';
+        return g+'g '+s+'s '+c+'c';
     }
 
     if (typeof(o) == "number")
@@ -71,12 +71,13 @@ $(function(){
                                 this['reagents'].join(',')])
                 );
                 });
+
+                $('#loading').hide();
+                $('#heading').html('Stats for ' + realm);
+                $('#main').show();
             },
             dataType: 'json'
         });
-        $('#loading').hide();
-        $('#heading').html('Stats for ' + realm);
-        $('#main').show();
     }
 
 });
@@ -87,11 +88,6 @@ $(function(){
 <body>
 
 <div class="centered">
-    <div id="invalid" style="display:none;">
-        <h1>
-        Please choose a realm.
-        </h1>
-    </div>
     <div id="main" style="display:none;">
         <h1 id="heading"></h1>
         <table cellpadding="0" cellspacing="0" border="1" class="display" id="table">
@@ -108,6 +104,11 @@ $(function(){
             <tbody>
             </tbody> 
         </table>
+    </div>
+    <div id="invalid" style="display:none;">
+        <h1>
+        Please choose a realm.
+        </h1>
     </div>
     <div id="loading">
         <h1 id="heading">
