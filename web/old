@@ -61,22 +61,6 @@ var drawn;
 google.load("visualization", "1", {packages:["corechart"]});
 google.setOnLoadCallback(function() {
 
-    $('#itemfilter').keydown(function(){
-        var match = $(this).val().toLowerCase().trim();
-        var blocks = $('.itemblock');
-        var c = 0;
-        $.each(blocks, function(){
-            if (escape($(this).attr('name')).indexOf(match) > -1) {
-                $(this).show();
-                c++;
-            }
-            else {
-                $(this).hide();
-            }
-        });
-        $('#filterstatus').html(c + '/' + blocks.length);
-    });
-
     var realm = gup("name");
     var country = gup("country");
     if (realm == "" || country == "") {
@@ -104,25 +88,20 @@ google.setOnLoadCallback(function() {
 
                 $.each(data, function(idx){
                     // Add row to table
-                    var voldiv = '<div class="qtygraph" id="qty'+idx+'"></div>';
-                    var buydiv = '<div class="buygraph" id="buy'+idx+'"></div>';
-                    $('#items').append('<div name="'+escape(this.item.toLowerCase())+'" class="itemblock" id="block'+idx+'">'
-                        + '<div class="leftdiv">'
-                        + '<h1><span class="itemname">'+this['item']+'</span> - '
-                        + 'profit <span class="profit">'+wowprice(this['profit'])+'</span></h1>'
-                        + '<p>Buy mats for ('+wowprice(this['buy']).join(',')+')'
-                        + ', sell for '+wowprice(this['sell'])+'</p>'
-                        + '<p>Reagents: '+this['reagents'].join(',')+'</p>'
-                        + '</div><div class="rightdiv">'
-                        + buydiv
-                        + voldiv
-                        + '</div>'
-                        + '<br class="clear"/>'
-                        +'</div>'
+                    var voldiv = '<div id="qty'+idx+'"></div>';
+                    var buydiv = '<div id="buy'+idx+'"></div>';
+                    $('#table tr:last').before(
+                        wraprow(['<span class="itemname">'+this['item']+'</span>',
+                                '<span class="profit">'+wowprice(this['profit'])+'</span>',
+                                wowprice(this['buy']).join(','),
+                                wowprice(this['sell']),
+                                this['reagents'].join(','),
+                                buydiv,
+                                voldiv])
                     );
 
                     // Load graph only when visible
-                    $('#block'+idx).appear(function() {
+                    $('#qty'+idx).appear(function() {
                         if (drawn[idx] != undefined)
                             return;
 
@@ -162,7 +141,7 @@ google.setOnLoadCallback(function() {
                 });
 
                 $('#loading').hide();
-                $('#heading').html(realm);
+                $('#heading').html('Stats for ' + realm);
                 $('#main').show();
             },
             dataType: 'json'
@@ -179,12 +158,22 @@ google.setOnLoadCallback(function() {
 <div class="centered">
     <div id="main" style="display:none;">
         <h1 id="heading"></h1>
-        <div id="filterdiv">
-        <h3>Item name filter: <input type="text" id="itemfilter"/> <span id="filterstatus"></span></h3>
-        </div>
-        <div id="items">
+        <table cellpadding="0" cellspacing="0" border="1" class="display" id="table">
+              <thead>
+                    <tr>
+                            <th>Item</th>
+                            <th>Profit</th>
+                            <th>Buy</th>
+                            <th>Sell</th>
+                            <th>Mats</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                    <tr>
+            <thead>
 
-        </div>
+            <tbody>
+            </tbody> 
+        </table>
     </div>
     <div id="invalid" style="display:none;">
         <h1>
