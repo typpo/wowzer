@@ -36,17 +36,6 @@ function unix_to_readable(t) {
         day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks ago";
 }
 
-function inview(elem)
-{
-    var docViewTop = $(window).scrollTop();
-    var docViewBottom = docViewTop + $(window).height();
-
-    var elemTop = $(elem).offset().top;
-    var elemBottom = elemTop + $(elem).height();
-
-    return ((elemBottom >= docViewTop) && (elemTop <= docViewBottom));
-}
-
 function wowprice(o) {
     var pricecopper = function(c) {
         var g = Math.floor(c/10000);
