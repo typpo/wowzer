@@ -22,6 +22,6 @@ class Money:
         return '%sg %ss %sc' % (self.tuple())
 
     def __cmp__(self, other):
-        if type(other) == int:
-            return self._copper.__cmp__(other)
+        if type(other) == int or type(other) == long:
+            return long(self._copper).__cmp__(long(other))
         return self._copper.__cmp__(other._copper)
