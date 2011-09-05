@@ -20,7 +20,7 @@ def getCraftPricing(rinfo, item):
         # Not there, so check wowhead
         wowheadxml = parse(urllib.urlopen(WOWHEAD_BASE % (item)))
         ingreds = wowheadxml.findall('item/createdBy/spell/reagent')
-        reagents = [x.get('id') for x in ingreds]
+        reagents = [(x.get('id'), x.get('count')) for x in ingreds]
         item_map = [(x.get('id'), x.get('name')) for x in ingreds]
 
         # Store in databases
@@ -40,7 +40,8 @@ def getCraftPricing(rinfo, item):
     # Compare prices, etc.
     
     # Query spreads for item and its reagents
-    spreads = db.getMultiCurrentSpread(rinfo, [item] + reagents)
+    # TODO lookup reagent, but we ignore count for now 
+    spreads = db.getMultiCurrentSpread(rinfo, [item] + [x[0] for x in reagents])
 
     ts, prices = spreads[item]
     if ts == -1 or 'buy' not in prices:
@@ -50,7 +51,7 @@ def getCraftPricing(rinfo, item):
 
     rprices = []
     rnames = []
-    for id in reagents:
+    for id,count in reagents:
         rnames.append(db.getItemName(id))
         ts, prices = spreads[id]
         if ts == None or 'buy' not in prices:

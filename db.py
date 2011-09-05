@@ -58,6 +58,7 @@ DB_TABLE_REAGENTS = """
 CREATE TABLE IF NOT EXISTS reagents (
     item INT,
     reagent INT,
+    count SMALLINT,
 
     INDEX(item),
     INDEX(reagent)
@@ -126,13 +127,14 @@ def insertAuctions(info, aucs):
     conn.commit();
 
 
-def saveReagents(item, ids):
-    for id in ids:
+def saveReagents(item, reagents):
+    for r in reagents:
+        id, count = r
         query = """
-        INSERT INTO reagents (item, reagent)
-        VALUES (%s, %s)
+        INSERT INTO reagents (item, reagent, count)
+        VALUES (%s, %s, %s)
         """
-        queryargs = (item, id)
+        queryargs = (item, id, count)
         cur.execute(query, queryargs)
     conn.commit()
 
@@ -402,14 +404,14 @@ def getEMA(realm, item, days):
 # Returns reagents for item
 def getReagents(item):
     query = """
-    SELECT reagent
+    SELECT reagent,count
     FROM reagents
     WHERE item=%s
     """
     queryargs = (item)
     cur.execute(query, queryargs)
 
-    return [x[0] for x in cur.fetchall()]
+    return [x[0:1] for x in cur.fetchall()]
 
 # Returns item name
 def getItemName(item):

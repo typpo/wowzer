@@ -1,5 +1,10 @@
 TODO
 
+!! reagent price multiplier
+!! garbage collection
+
+Bug: avg while qty is 0
+
 in craftable pricing
 - qty
 - transxn vol
