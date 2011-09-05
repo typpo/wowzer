@@ -411,7 +411,7 @@ def getReagents(item):
     queryargs = (item)
     cur.execute(query, queryargs)
 
-    return [x[0:1] for x in cur.fetchall()]
+    return cur.fetchall()
 
 # Returns item name
 def getItemName(item):
